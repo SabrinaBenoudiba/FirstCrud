@@ -13,30 +13,32 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 
 final class HomePageController extends AbstractController
 {
-    #[Route('/', name: 'app_home_page')]
+    #[Route('/', name: 'app_home_page')] // le '/' permet de renvoyer la page par default directement a l'ouverture sinon c'etait /home/page // ne pas toucher le nom
     // public function homePage(EntityManagerInterface $entityManager): Response
      public function homePage(CrudRepository $crudRepo): Response
     {
-        $datas = $crudRepo->findall();
-        // $datas = $entityManager
-            // ->getRepository(Crud::class)
-            // ->findAll();
-        return $this->render('home_page/homePage.html.twig', [
-            'controller_name' => 'HomePageController',
-            'datas' => $datas,
+        $datas = $crudRepo->findall(); // a acces a tous ce qu'il y a dans le repo du crud
+        //autre possibilité mais plus long et au lieu de crud repo dans la fctn on met entitymanagerinterface
+        // $datas = $entityManager 
+            // ->getRepository(Crud::class)  // on récupère tout
+            // ->findAll(); // on les trouvent toutes
+
+        return $this->render('home_page/homePage.html.twig', [  // renommer là où on prend la page qui est nommé index.html.twig normalement
+            'controller_name' => 'HomePageController', //indique le nom du controller
+            'datas' => $datas, // variable datas qu'on va utiliser en front avec la valeur $datas
         ]);
     }
 
     #[Route('/create', name: 'app_create_form')]  #coller la fonction d'avant et la modifier 
-    public function create_form(Request $request, EntityManagerInterface $entityManager): Response 
+    public function create_form(Request $request, EntityManagerInterface $entityManager): Response // entityManagerInterface (taxi) remplace getDoctrine
     { # il faut cliquer droit si des erreurs dans les class et importer la class
-        $crud = new Crud(); # On initialise une variable qui va être égale à une nouvelle instance de la table Crud (initialisation d'un objet vide à remplir avec les données du formulaire).
+        $crud = new Crud(); # On initialise une variable qui contient une nouvelle instanciation de la class de l'entity Crud (title et content)
         $form = $this->createForm(CrudType::class, $crud); # On initialise un formulaire basé sur la classe CrudType, en liant ce formulaire à l'objet $crud. On utilise $this car createForm est une méthode qui appartient à la classe du contrôleur (hérité de AbstractController).
         $form->handleRequest($request); # On "traite" la requête HTTP reçue (GET ou POST) : s'il s'agit d'un POST, on remplit l'objet $crud avec les données soumises par l'utilisateur.
         if ( $form->isSubmitted() && $form->isValid()){ #si mon formulaire et soumis et valide
         
             $entityManager->persist($crud); # dans ce cas là tu persist sur crud (il prend les données puis attend et c'est flush qui emmène les données)
-            $entityManager->flush(); # flush il emmène les données dans la bdd du persist
+            $entityManager->flush(); # flush il emmène les données dans la bdd dqui sont stocké dans le persist
 
             $this->addFlash('notice', 'Soumission réussi !!');
 
@@ -48,14 +50,13 @@ final class HomePageController extends AbstractController
         ]);
     }
 
-    #[Route('/update', name: 'update')]
-    public function update(Request $request, EntityManagerInterface $entityManager, $id): Response 
+    #[Route('/update/{id}', name: 'update')] # création d'un formulaire 
+    public function update_form($id, Request $request, EntityManagerInterface $entityManager): Response 
     {
-        $crud = new Crud();
+        $crud = $entityManager->getRepository(Crud::class)->find($id);
         $form = $this->createForm(CrudType::class, $crud); 
         $form->handleRequest($request); 
         if ( $form->isSubmitted() && $form->isValid()){ 
-        
             $entityManager->persist($crud); 
             $entityManager->flush(); 
 
@@ -63,28 +64,23 @@ final class HomePageController extends AbstractController
 
             return $this->redirectToRoute('app_home_page'); 
         }
+
          return $this->render('form/updateForm.html.twig', [
             'form' => $form->createView()
         ]);
     }
 
-    #[Route('/delete', name: 'delete')]
-    public function delete(Request $request, EntityManagerInterface $entityManager, $id): Response 
+    #[Route('/delete/{id}', name: 'delete')]
+    public function delete($id, EntityManagerInterface $entityManager): Response 
     {
-        $crud = new Crud();
-        $form = $this->createForm(CrudType::class, $crud); 
-        $form->handleRequest($request); 
-        if ( $form->isSubmitted() && $form->isValid()){ 
+        $del = $entityManager->getRepository(Crud::class)->find($id);
         
-            $entityManager->persist($crud); 
-            $entityManager->flush(); 
+            $entityManager->remove($del); 
+            $entityManager->flush();
 
-            $this->addFlash('notice', 'Modification réussi !!');
+            $this->addFlash('notice', 'Suppression réussi !!');
 
             return $this->redirectToRoute('app_home_page'); 
-        }
-         return $this->render('form/deleteForm.html.twig', [
-            'form' => $form->createView()
-        ]);
+      
     }
 }
